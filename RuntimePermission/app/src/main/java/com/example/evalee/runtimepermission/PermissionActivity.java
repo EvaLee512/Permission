@@ -1,4 +1,4 @@
-package com.thinking.video.permission;
+package com.example.evalee.runtimepermission;
 
 import android.Manifest;
 import android.annotation.TargetApi;
@@ -6,7 +6,12 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -19,32 +24,36 @@ import java.util.Map;
  * Created by EvaLee on 2016/9/6.
  * 20160907 added by Eva_Lee for android M permission issue
  */
-public class PermissionManagerActivity {
-    private static final String TAG = "PerManActivity";
-    final private int REQUEST_CODE_ASK_PERMISSIONS = 123;
+public class PermissionActivity extends Activity {
+    private static final String TAG = "PermissionActivity_lsn";
     final private int REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS = 124;
-
-    //20161115
-    Boolean hasAllPermissions = false;
-
     Context mContext;
 
-    public void setContext(Context _con) { //_con->BaseActivity
-        mContext = _con;
+    static final String[] PERMISSIONS = new String[]{
+            Manifest.permission.CAMERA,
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.RECORD_AUDIO,
+    };
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        mContext = PermissionActivity.this;
+        Log.i(TAG,"mContext = "+mContext);
+        //checkSDKVersion only need to check the Permission at Android M
+        if (checkSDKVersion() && !hasAllPermissions(PERMISSIONS))
+            checkPermissionGranted();
     }
 
-    //一次请求多个权限
-    @TargetApi(23)
     public void checkPermissionGranted() {
         List<String> permissionsNeeded = new ArrayList<String>();
-
         final List<String> permissionsList = new ArrayList<String>();
-        if (!addPermission(permissionsList, Manifest.permission.CAMERA))
-            permissionsNeeded.add("Camera");
-        if (!addPermission(permissionsList, Manifest.permission.RECORD_AUDIO))
-            permissionsNeeded.add("Use MICROPHONE");
-        if (!addPermission(permissionsList, Manifest.permission.WRITE_EXTERNAL_STORAGE))
-            permissionsNeeded.add("Write External storage");
+
+        for(int i = 0;i<PERMISSIONS.length;i++){
+            if(!addPermission(permissionsList,PERMISSIONS[i])){
+                permissionsNeeded.add(PERMISSIONS[i]);
+            }
+        }
 
         if (permissionsList.size() > 0) {
             if (permissionsNeeded.size() > 0) {
@@ -86,37 +95,6 @@ public class PermissionManagerActivity {
 
     }
 
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        switch (requestCode) {
-            case REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS: {
-                Map<String, Integer> perms = new HashMap<String, Integer>();
-                // Initial
-                perms.put(Manifest.permission.CAMERA, PackageManager.PERMISSION_GRANTED);
-                perms.put(Manifest.permission.RECORD_AUDIO, PackageManager.PERMISSION_GRANTED);
-                perms.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, PackageManager.PERMISSION_GRANTED);
-
-                // Fill with results
-                for (int i = 0; i < permissions.length; i++)
-                    perms.put(permissions[i], grantResults[i]);
-                if (perms.get(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-                        && perms.get(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
-                        && perms.get(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-                       ) {//20161115
-                    Log.i("PerManagerActivity","Eva macate All Permissions Granted");
-                    hasAllPermissions = true;//20161115
-                    // All Permissions Granted
-                } else {
-                    // Permission Denied
-                    hasAllPermissions = false;//20161115
-                    Toast.makeText(mContext, "Some Permission is Denied", Toast.LENGTH_SHORT)
-                            .show();
-                    destory();
-                }
-            }
-            break;
-        }
-    }
-
     public void showMessageOKCancel(String message, DialogInterface.OnClickListener okListener) {
         new AlertDialog.Builder(mContext)
                 .setMessage(message)
@@ -126,13 +104,57 @@ public class PermissionManagerActivity {
                 .show();
     }
 
-    //20161115
-    public boolean hasAllPermissions(){
-        return hasAllPermissions;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS: {
+                Map<String, Integer> perms = new HashMap<String, Integer>();
+                // Fill with results
+                for (int i = 0; i < permissions.length; i++)
+                    perms.put(permissions[i], grantResults[i]);
+                for (int j = 0;j<PERMISSIONS.length; j++){
+                    if(perms.get(PERMISSIONS[j])== PackageManager.PERMISSION_GRANTED){
+                        Toast.makeText(mContext, "All Permissions Granted is granted", Toast.LENGTH_SHORT)
+                                .show();
+                    } else {
+                        // Permission Denied
+                        Toast.makeText(mContext, "Some Permission is Denied", Toast.LENGTH_SHORT)
+                                .show();
+                        openSetting();
+                    }
+                }
+            }
+        }
     }
 
-    public void destory() {
-        mContext = null;
-        System.exit(1);
+    private boolean checkSDKVersion() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    //20161115
+    public boolean hasAllPermissions(String... permissions){
+        for (String permission : permissions) {
+            if (mContext.checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED)
+                return false;
+        }
+        return true;
+    }
+
+    public void openSetting() {
+        Intent intent = new Intent();
+        intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        Uri uri = Uri.fromParts("package", getPackageName(), null);
+        intent.setData(uri);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 }
