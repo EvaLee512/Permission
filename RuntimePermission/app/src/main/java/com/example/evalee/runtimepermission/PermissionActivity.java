@@ -108,12 +108,8 @@ public class PermissionActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         switch (requestCode) {
             case REQUEST_CODE_ASK_MULTIPLE_PERMISSIONS: {
-                Map<String, Integer> perms = new HashMap<String, Integer>();
-                // Fill with results
-                for (int i = 0; i < permissions.length; i++)
-                    perms.put(permissions[i], grantResults[i]);
-                for (int j = 0;j<PERMISSIONS.length; j++){
-                    if(perms.get(PERMISSIONS[j])== PackageManager.PERMISSION_GRANTED){
+                for (int j = 0;j<grantResults.length; j++){
+                    if(grantResults[j]== PackageManager.PERMISSION_GRANTED){
                         Toast.makeText(mContext, "All Permissions Granted is granted", Toast.LENGTH_SHORT)
                                 .show();
                     } else {
@@ -151,10 +147,5 @@ public class PermissionActivity extends Activity {
         intent.setData(uri);
         startActivity(intent);
         finish();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
     }
 }
